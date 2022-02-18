@@ -18,11 +18,14 @@ def train_test_split(lst_pairs: List[Any], test_size: float = 0.2, seed: int = 4
     return pairs_train, pairs_test
 
 
-def main():
-    path = Path("datasets/vision2-table")
+def image2label_path(image_path: str):
+    return image_path.replace("/images/", "/labels/").replace(".jpeg", ".txt").replace(".pdf", ".txt").replace(".png", ".txt")
+
+
+def split_images_and_labels(path: Path = Path("datasets/vision2-table")):
     image_paths = []
     for ext in ("*.png", "*.jpg", "*.jpeg"):
-        image_paths.extend(sorted((path / "images").glob(f"**/{ext}")))
+        image_paths.extend(sorted((path / "images").glob(f"{ext}")))
 
     ## train: 0.8, val: 0.15, test: 0.05
 
@@ -41,9 +44,11 @@ def main():
 
     for image_path in image_train_paths:
         try:
-            new_image_path = str(image_path.absolute()).replace("/train/", "/train_split/")
-            label_path = str(image_path.absolute()).replace("/images/", "/labels/").replace(".jpeg", ".txt")
-            new_label_path = label_path.replace("/train/", "/train_split/")
+            path_parts = list(image_path.parts)
+            path_parts.insert(-1, "train_split")
+            new_image_path = Path(*path_parts)
+            label_path = image2label_path(str(image_path.absolute()))
+            new_label_path = image2label_path(str(new_image_path.absolute()))
             shutil.move(str(image_path.absolute()), new_image_path)
             shutil.move(label_path, new_label_path)
         except Exception as e:
@@ -52,9 +57,11 @@ def main():
 
     for image_path in image_val_paths:
         try:
-            new_image_path = str(image_path.absolute()).replace("/train/", "/val_split/")
-            label_path = str(image_path.absolute()).replace("/images/", "/labels/").replace(".jpeg", ".txt")
-            new_label_path = label_path.replace("/train/", "/val_split/")
+            path_parts = list(image_path.parts)
+            path_parts.insert(-1, "val_split")
+            new_image_path = Path(*path_parts)
+            label_path = image2label_path(str(image_path.absolute()))
+            new_label_path = image2label_path(str(new_image_path.absolute()))
             shutil.move(str(image_path.absolute()), new_image_path)
             shutil.move(label_path, new_label_path)
         except Exception as e:
@@ -63,9 +70,11 @@ def main():
 
     for image_path in image_test_paths:
         try:
-            new_image_path = str(image_path.absolute()).replace("/train/", "/test_split/")
-            label_path = str(image_path.absolute()).replace("/images/", "/labels/").replace(".jpeg", ".txt")
-            new_label_path = label_path.replace("/train/", "/test_split/")
+            path_parts = list(image_path.parts)
+            path_parts.insert(-1, "test_split")
+            new_image_path = Path(*path_parts)
+            label_path = image2label_path(str(image_path.absolute()))
+            new_label_path = image2label_path(str(new_image_path.absolute()))
             shutil.move(str(image_path.absolute()), new_image_path)
             shutil.move(label_path, new_label_path)
         except Exception as e:
@@ -74,4 +83,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    split_images_and_labels()
