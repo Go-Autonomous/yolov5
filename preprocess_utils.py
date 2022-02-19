@@ -2,6 +2,7 @@ import os
 import shutil
 from pdf2image import convert_from_path
 from loguru import logger
+from PIL import Image
 
 
 def delete_inside(folder: str):
@@ -186,3 +187,121 @@ def join_head_line(path, final_path):
                         first_num = False
                     else:
                         f.write(" " + str(item))
+
+
+def table_transform(path: str):
+    """
+    Function to crop annotated PO for Vision 2.0 into just a table area and transform all labels related
+    to inner table area into a corresponding format.
+    :param path: str
+        Path to folder with labelled images and corresponding .txt files with labels. Image and corresponding
+        .txt files have to have the same name and be located in the same folder.
+    :return: None
+        Results are saved into folder "created_data" inside this repository.
+    """
+    path_images = os.path.join(path, 'images')
+    path_labels = os.path.join(path, 'labels')
+
+    # *** For all images in a folder ***
+    for file in os.listdir(path_images):
+        correct = True
+
+        # *** Crop image based on annotation ***
+        # Opens an image in RGB mode and delete the origin in the folder
+        im = Image.open(os.path.join(path_images, file))
+        os.remove(os.path.join(path_images, file))
+
+        # Size of the image in pixels (size of original image)
+        width, height = im.size
+
+        # Get table labels and remove the original file
+        labels = open(os.path.join(path_labels,  file.replace('.jpeg', '.txt')), "r").readlines()
+        labels = [line.split() for line in labels]
+        os.remove(os.path.join(path_labels, file.replace('.jpeg', '.txt')))
+
+        # Get label objects
+        table_obj = list(filter(lambda x: int(x[0]) == 0, labels))
+        header_obj = list(filter(lambda x: int(x[0]) == 1, labels))
+        line_obj = list(filter(lambda x: int(x[0]) == 2, labels))
+        column_obj = list(filter(lambda x: int(x[0]) == 3, labels))
+
+        # In case we have any table inside annotated document
+        if table_obj:
+            table = table_obj[0]
+            # Setting the points for cropped image
+            left = (float(table[1]) - float(table[3]) / 2) * width
+            top = (float(table[2]) - float(table[4]) / 2) * height
+            right = (float(table[1]) + float(table[3]) / 2) * width
+            bottom = (float(table[2]) + float(table[4]) / 2) * height
+
+            # Cropped image of above dimension
+            # (It will not change original image)
+            im1 = im.crop((left, top, right, bottom))
+
+            # *** Transform old annotations inside the table ***
+            # relative table coordinates transformation
+            top_rel = top / height
+            bottom_rel = bottom / height
+            left_rel = left / width
+            right_rel = right / width
+
+            # object transformation
+            obj_container = [header_obj, line_obj, column_obj]
+            transformed_container = []
+            for ind, obj_type in enumerate(obj_container):
+                for instance in obj_type:
+                    tmp_line = [
+                        ind,
+                        (float(instance[1]) - left_rel) / (right_rel - left_rel),
+                        (float(instance[2]) - top_rel) / (bottom_rel - top_rel),
+                        float(instance[3]) / (right_rel - left_rel),
+                        float(instance[4]) / (bottom_rel - top_rel),
+                    ]
+
+                    # check for overlapping
+                    bottom_overlap = float(instance[2]) + float(instance[4]) / 2 - bottom_rel
+                    top_overlap = top_rel - (float(instance[2]) - float(instance[4]) / 2)
+                    left_overlap = left_rel - (float(instance[1]) - float(instance[3]) / 2)
+                    right_overlap = float(instance[1]) + float(instance[3]) / 2 - right_rel
+                    if bottom_overlap > 0:
+                        tmp_line[2] = tmp_line[2] - (bottom_overlap / (bottom_rel - top_rel)) / 2
+                        tmp_line[4] = tmp_line[4] - bottom_overlap / (bottom_rel - top_rel)
+                    if top_overlap > 0:
+                        tmp_line[2] = tmp_line[2] + (top_overlap / (bottom_rel - top_rel)) / 2
+                        tmp_line[4] = tmp_line[4] - top_overlap / (bottom_rel - top_rel)
+                    if right_overlap > 0:
+                        tmp_line[1] = tmp_line[1] - (right_overlap / (right_rel - left_rel)) / 2
+                        tmp_line[3] = tmp_line[3] - right_overlap / (right_rel - left_rel)
+                    if left_overlap > 0:
+                        tmp_line[1] = tmp_line[1] + (left_overlap / (right_rel - left_rel)) / 2
+                        tmp_line[3] = tmp_line[3] - left_overlap / (right_rel - left_rel)
+
+                    # never go above 1.0
+                    tmp_line[3] = min(tmp_line[3], 1.0)
+                    tmp_line[4] = min(tmp_line[4], 1.0)
+
+                    # Check if bad annotation
+                    if any(i < 0 or i > 1 for i in tmp_line[1:]):
+                        correct = False
+
+                    transformed_container.append(tmp_line)
+
+            if correct:
+                # Save the image
+                im1.save(os.path.join(path_images, file))
+                # Save labels into .txt file
+                with open(os.path.join(path_labels, file.replace('.jpeg', '.txt')), "w") as f:
+                    first_obj = True
+                    for obj in transformed_container:
+                        first_num = True
+                        for item in obj:
+                            if first_num and first_obj:
+                                f.write(str(item))
+                                first_num = False
+                                first_obj = False
+                            elif first_num and not first_obj:
+                                f.write("\n")
+                                f.write(str(item))
+                                first_num = False
+                            else:
+                                f.write(" " + str(item))
