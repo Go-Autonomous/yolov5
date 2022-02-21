@@ -1,5 +1,7 @@
 import os
 import shutil
+import numpy as np
+from pathlib import Path
 from pdf2image import convert_from_path
 from loguru import logger
 from PIL import Image
@@ -83,7 +85,7 @@ def rename_data(name, dir_images, dir_labels):
         counter += 1
 
 
-def subset_labels(labels_path, subset, list_of_labels, merge_addresses=False):
+def subset_labels(labels_path, label_id, label_num):
     """
     Function to split labels just for needed objects for detection.
 
@@ -96,16 +98,7 @@ def subset_labels(labels_path, subset, list_of_labels, merge_addresses=False):
     def manual_replace(s, char, index):
         return s[:index] + char + s[index + 1:]
 
-    if merge_addresses:
-        addresses_ids = [list_of_labels[part] for part in ["Invoice address", "Vendor address", "Company address"]]
-    else:
-        addresses_ids = []
-
-    subset_ids = [list_of_labels[part] for part in subset] + addresses_ids
-
-    transform = {str(label): number for label, number
-                 in zip(subset_ids, list(range(len(subset))) + [len(subset)-1 for _ in range(len(addresses_ids))])
-                 }
+    transform = {str(label_num[item]): label_id[item] for item in label_id.keys() if label_id[item] is not None}
 
     # loop over files with labels
     for filename in os.listdir(labels_path):
@@ -189,7 +182,7 @@ def join_head_line(path, final_path):
                         f.write(" " + str(item))
 
 
-def table_transform(path: str):
+def table2rowcolhead(path: str):
     """
     Function to crop annotated PO for Vision 2.0 into just a table area and transform all labels related
     to inner table area into a corresponding format.
@@ -305,3 +298,99 @@ def table_transform(path: str):
                                 first_num = False
                             else:
                                 f.write(" " + str(item))
+
+
+def tables2cols(path):
+
+    path_images = os.path.join(path, 'images')
+    path_labels = os.path.join(path, 'labels')
+
+    for file in os.listdir(path_images):
+        image = Image.open(os.path.join(path_images, file))
+        width, height = image.size
+        os.remove(os.path.join(path_images, file))
+
+        # Get table labels and delete the original file
+        labels = open(os.path.join(path_labels, file.replace('.jpeg', '.txt')), "r").readlines()
+        labels = [line.split() for line in labels]
+        os.remove(os.path.join(path_labels, file.replace('.jpeg', '.txt')))
+
+        # Get label objects
+        header_objs = list(filter(lambda x: int(x[0]) == 1, labels))
+        line_objs = list(filter(lambda x: int(x[0]) == 2, labels))
+        column_objs = list(filter(lambda x: int(x[0]) == 3, labels))
+
+        for i, column_obj in enumerate(column_objs):
+            # Setting the points for cropped image
+            column_x_center = float(column_obj[1])
+            column_y_center = float(column_obj[2])
+            column_width = float(column_obj[3])
+            column_height = float(column_obj[4])
+
+            if column_height < 0.01 or column_width < 0.01:
+                continue
+
+            left = (column_x_center - column_width / 2) * width
+            top = (column_y_center - column_height / 2) * height
+            right = (column_x_center + column_width / 2) * width
+            bottom = (column_y_center + column_height / 2) * height
+
+            col_image = image.crop((left, top, right, bottom))
+            col_width, col_height = col_image.size
+
+            # *** Transform old annotations inside the column ***
+            # relative column coordinates transformation
+            top_rel = top / height
+            bottom_rel = bottom / height
+            left_rel = left / width
+            right_rel = right / width
+
+            other_objs = header_objs + line_objs
+
+            transformed_inside_col_row = []
+            for other_obj in other_objs:
+                # Setting the points for cropped image (relative)
+                obj_type = int(other_obj[0]) - 1
+                other_obj_x_center = (float(other_obj[1]) - left_rel) / (right_rel - left_rel)
+                other_obj_y_center = (float(other_obj[2]) - top_rel) / (bottom_rel - top_rel)
+                other_obj_width = (float(other_obj[3])) / (right_rel - left_rel)
+                other_obj_height = (float(other_obj[4])) / (bottom_rel - top_rel)
+
+                if other_obj_width > 1:
+                    inside_col_x_center = 0.5
+                    inside_col_width = 1
+                else:
+                    inside_col_x_center = other_obj_x_center
+                    inside_col_width = other_obj_width
+
+                if other_obj_height > 1:
+                    inside_col_y_center = 0.5
+                    inside_col_height = 1
+                else:
+                    inside_col_y_center = other_obj_y_center
+                    inside_col_height = other_obj_height
+
+                if other_obj_height < 0.01 or other_obj_width < 0.01:
+                    continue
+
+                # resize to fit new cropped image
+                tmp_obj = [obj_type, inside_col_x_center, inside_col_y_center, inside_col_width, inside_col_height]
+
+                # Test if the inside is just blank!
+                obj_left = (inside_col_x_center - inside_col_width / 2) * col_width
+                obj_top = (inside_col_y_center - inside_col_height / 2) * col_height
+                obj_right = (inside_col_x_center + inside_col_width / 2) * col_width
+                obj_bottom = (inside_col_y_center + inside_col_height / 2) * col_height
+
+                gs_col_obj_image = col_image.crop((obj_left, obj_top, obj_right, obj_bottom)).convert("1")
+                gs_col_obj_image = np.array(gs_col_obj_image)
+                frac_white = gs_col_obj_image.sum() / (gs_col_obj_image.shape[0] * gs_col_obj_image.shape[1])
+                tmp_obj = [str(obj) for obj in tmp_obj]
+                txt_row = " ".join(tmp_obj)
+                if frac_white < 0.99:
+                    transformed_inside_col_row.append(txt_row)
+
+            col_image.save(path_images / Path(f"{file.replace('.jpeg', '')}_{i}" + '.jpeg'))
+            # Save labels into .txt file
+            with open(path_labels / Path(f"{file.replace('.jpeg', '')}_{i}" + '.txt'), "w") as f:
+                f.writelines(["%s\n" % item for item in transformed_inside_col_row])

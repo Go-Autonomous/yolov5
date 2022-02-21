@@ -2,20 +2,21 @@ import split
 from preprocess_utils import copy_files_to_final_destination, find_missing_labels, subset_labels
 from pathlib import Path
 
-label_lst = [
-    "Table",
-    "Table head",
-    "Table line",
-    "Table column",
-    "Table footer",
-    "Table comments",
-    "Table totals",
-    "Delivery address",
-    "Invoice address",
-    "Vendor address",
-    "Company address",
-]
-label2id = {label: id for id, label in enumerate(label_lst)}
+
+label2id = {
+    "Table": 0,
+    "Table head": None,
+    "Table line": None,
+    "Table column": None,
+    "Table footer": None,
+    "Table comments": None,
+    "Table totals": 1,
+    "Delivery address": 2,
+    "Invoice address": 2,
+    "Vendor address": 2,
+    "Company address": 2,
+}
+label_pos = {label: id for id, label in enumerate(list(label2id.keys()))}
 
 
 def main():
@@ -27,9 +28,8 @@ def main():
     copy_files_to_final_destination(src_path="preprocess", dest_path="datasets/created_data_table")
     subset_labels(
         labels_path="datasets/created_data_table/labels",
-        subset=["Table", "Table totals", "Delivery address"],
-        list_of_labels=label2id,
-        merge_addresses=True,
+        label_id=label2id,
+        label_num=label_pos,
     )
     find_missing_labels("datasets/created_data_table/images", "datasets/created_data_table/labels")
     split.split_images_and_labels(path=Path("datasets/created_data_table"))
