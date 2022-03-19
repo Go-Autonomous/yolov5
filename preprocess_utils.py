@@ -33,7 +33,7 @@ def copy_files_to_final_destination(src_path, dest_path):
     missing_counter = 0
     for filename in os.listdir(os.path.join(src_path, 'images')):
         image_path = os.path.join(src_path + '/images', filename)
-        label_path = os.path.join(src_path + '/labels', filename.replace('.jpeg', '.txt'))
+        label_path = os.path.join(src_path + '/labels', filename.replace('.png', '.txt'))
         try:
             shutil.copy2(image_path, os.path.join(dest_path, 'images'))
             shutil.copy2(label_path, os.path.join(dest_path, 'labels'))
@@ -50,14 +50,14 @@ def find_missing_labels(dir_images, dir_labels):
 
     # loop over images and delete these for which we do not have labels
     for filename in os.listdir(dir_images):                                        # loop over files
-        if filename.replace('.jpeg', '.txt') not in os.listdir(dir_labels):        # check existence
+        if filename.replace('.png', '.txt') not in os.listdir(dir_labels):        # check existence
             os.remove(os.path.join(dir_images, filename))                          # delete
 
     # check sizes of both directories with images and labels, in case the size is not the same repeat the process
     # above and delete files with labels in case we do not have corresponding image
     if len(os.listdir(dir_images)) != len(os.listdir(dir_labels)):
         for filename in os.listdir(dir_labels):
-            if filename.replace('.txt', '.jpeg') not in os.listdir(dir_images):
+            if filename.replace('.txt', '.png') not in os.listdir(dir_images):
                 os.remove(os.path.join(dir_labels, filename))
 
 
@@ -73,13 +73,13 @@ def rename_data(name, dir_images, dir_labels):
     for filename in os.listdir(dir_images):
         if counter < 10:
             os.rename(os.path.join(dir_images, filename),
-                      os.path.join(dir_images, name + '_0' + str(counter) + '.jpeg'))
-            os.rename(os.path.join(dir_labels, filename.replace('.jpeg', '.txt')),
+                      os.path.join(dir_images, name + '_0' + str(counter) + '.png'))
+            os.rename(os.path.join(dir_labels, filename.replace('.png', '.txt')),
                       os.path.join(dir_labels, name + '_0' + str(counter) + '.txt'))
         else:
             os.rename(os.path.join(dir_images, filename),
-                      os.path.join(dir_images, name + '_' + str(counter) + '.jpeg'))
-            os.rename(os.path.join(dir_labels, filename.replace('.jpeg', '.txt')),
+                      os.path.join(dir_images, name + '_' + str(counter) + '.png'))
+            os.rename(os.path.join(dir_labels, filename.replace('.png', '.txt')),
                       os.path.join(dir_labels, name + '_' + str(counter) + '.txt'))
 
         counter += 1
@@ -139,13 +139,13 @@ def from_pdf_to_img(pdfs, imgs):
     for pdf in os.listdir(pdfs):
         print('--- converting PDF ', counter, ' out of ', size, ' ---')
         counter += 1
-        # convert into jpeg
+        # convert into png
         try:
             pages = convert_from_path(os.path.join(pdfs, pdf), 300)
             # save
             page_num = 1
             for page in pages:
-                page.save(os.path.join(imgs, pdf.replace('.pdf', '') + str(page_num) + '.jpeg'), 'JPEG')
+                page.save(os.path.join(imgs, pdf.replace('.pdf', '') + str(page_num) + '.png'), 'png')
                 page_num += 1
         except:
             print('Error: not PDF')
@@ -208,9 +208,9 @@ def table2rowcolhead(path: str):
         width, height = im.size
 
         # Get table labels and remove the original file
-        labels = open(os.path.join(path_labels,  file.replace('.jpeg', '.txt')), "r").readlines()
+        labels = open(os.path.join(path_labels,  file.replace('.png', '.txt')), "r").readlines()
         labels = [line.split() for line in labels]
-        os.remove(os.path.join(path_labels, file.replace('.jpeg', '.txt')))
+        os.remove(os.path.join(path_labels, file.replace('.png', '.txt')))
 
         # Get label objects
         table_obj = list(filter(lambda x: int(x[0]) == 0, labels))
@@ -283,7 +283,7 @@ def table2rowcolhead(path: str):
                 # Save the image
                 im1.save(os.path.join(path_images, file))
                 # Save labels into .txt file
-                with open(os.path.join(path_labels, file.replace('.jpeg', '.txt')), "w") as f:
+                with open(os.path.join(path_labels, file.replace('.png', '.txt')), "w") as f:
                     first_obj = True
                     for obj in transformed_container:
                         first_num = True
@@ -311,9 +311,9 @@ def tables2cols(path):
         os.remove(os.path.join(path_images, file))
 
         # Get table labels and delete the original file
-        labels = open(os.path.join(path_labels, file.replace('.jpeg', '.txt')), "r").readlines()
+        labels = open(os.path.join(path_labels, file.replace('.png', '.txt')), "r").readlines()
         labels = [line.split() for line in labels]
-        os.remove(os.path.join(path_labels, file.replace('.jpeg', '.txt')))
+        os.remove(os.path.join(path_labels, file.replace('.png', '.txt')))
 
         # Get label objects
         header_objs = list(filter(lambda x: int(x[0]) == 1, labels))
@@ -390,7 +390,7 @@ def tables2cols(path):
                 if frac_white < 0.99:
                     transformed_inside_col_row.append(txt_row)
 
-            col_image.save(path_images / Path(f"{file.replace('.jpeg', '')}_{i}" + '.jpeg'))
+            col_image.save(path_images / Path(f"{file.replace('.png', '')}_{i}" + '.png'))
             # Save labels into .txt file
-            with open(path_labels / Path(f"{file.replace('.jpeg', '')}_{i}" + '.txt'), "w") as f:
+            with open(path_labels / Path(f"{file.replace('.png', '')}_{i}" + '.txt'), "w") as f:
                 f.writelines(["%s\n" % item for item in transformed_inside_col_row])
