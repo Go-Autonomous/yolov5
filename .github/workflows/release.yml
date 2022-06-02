@@ -34,7 +34,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "Changelog: Create full changelog for commit"
-        uses: Hojland/github-changelog-action@v1.0.1
+        uses: hojland/gha-chglog@v1.0.2
         with:
           filename: CHANGELOG.md
           next_version: ${{ steps.version.outputs.new_version }}
