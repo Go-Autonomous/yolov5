@@ -12,6 +12,12 @@ torch>=1.7.0
 torchvision>=0.8.1
 tqdm>=4.41.0
 pdf2image
+loguru
+google-cloud-storage==1.37.1 # To get the weights
+google-cloud-logging==2.6.0
+httpx
+python-dotenv
+pydantic
 
 # Logging -------------------------------------
 tensorboard>=2.4.1
