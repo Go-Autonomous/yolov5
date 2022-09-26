@@ -19,7 +19,7 @@ def train_test_split(lst_pairs: List[Any], test_size: float = 0.2, seed: int = 4
 
 
 def image2label_path(image_path: str):
-    return image_path.replace("/images/", "/labels/").replace(".jpeg", ".txt").replace(".pdf", ".txt").replace(".png", ".txt")
+    return image_path.replace("/images/", "/labels/").replace(".jpeg", ".txt").replace(".png", ".txt")
 
 
 def split_images_and_labels(path: Path = Path("datasets/vision2-table")):
