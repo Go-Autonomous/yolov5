@@ -190,11 +190,11 @@ def download_label_studio_data(annotated_data_in_jsons):
 
 
 def get_training_data(access_token='local', needs_to_be_validated=False):
-    # delete_content_of_folder('preprocess/images')
-    # delete_content_of_folder('preprocess/labels')
-    #
-    # # get legacy data
-    # download_legacy_data()
+    delete_content_of_folder('preprocess/images')
+    delete_content_of_folder('preprocess/labels')
+
+    # get legacy data
+    download_legacy_data()
 
     # get label studio data
     urls = get_postgres_data_urls(access_token)
