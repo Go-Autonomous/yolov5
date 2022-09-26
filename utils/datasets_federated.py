@@ -116,10 +116,10 @@ def create_dataloader(path, imgsz, batch_size, stride, single_cls=False, hyp=Non
     nw = min([os.cpu_count() // DEVICE_COUNT, batch_size if batch_size > 1 else 0, workers])  # number of workers
     sampler = RandomSampler(dataset) if rank == -1 else distributed.DistributedSampler(dataset, shuffle=shuffle)
 
-    # TODO use batch sampler from federated learning repo
+    # TODO use batch sampler from federated learning repo DONE!
     batch_sampler = OrgBatchSampler(sampler, batch_size=batch_size, drop_last=False)
 
-    # TODO for loader use batch sampler, sampler as an argument into batch sampler, as well as batch size
+    # TODO for loader use batch sampler, sampler as an argument into batch sampler, as well as batch size DONE!
     loader = DataLoader if image_weights else InfiniteDataLoader  # only DataLoader allows for attribute updates
     return loader(dataset,
                   num_workers=nw,
@@ -455,6 +455,7 @@ class LoadImagesAndLabels(Dataset):
                     with open(p) as t:
                         t = t.read().strip().splitlines()
                         parent = str(p.parent) + os.sep
+                        # TODO paths to images in a list
                         f += [x.replace('./', parent) if x.startswith('./') else x for x in t]  # local to global path
                         # f += [p.parent / x.lstrip(os.sep) for x in t]  # local to global path (pathlib)
                 else:
@@ -470,6 +471,7 @@ class LoadImagesAndLabels(Dataset):
             raise Exception(f'{prefix}Error loading data from {path}: {e}\nSee {HELP_URL}')
 
         # Check cache
+        # TODO paths to labels
         self.label_files = img2label_paths(self.img_files)  # labels
         cache_path = (p if p.is_file() else Path(self.label_files[0]).parent).with_suffix('.cache')
         try:

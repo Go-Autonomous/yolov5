@@ -106,8 +106,9 @@ def download_blob(url):
     return annotation
 
 
-def download_annotated_data_from_bucket(data_paths):
+def download_annotated_data_from_bucket(data_paths, needs_to_be_validated):
     annotations = {}
+    # TODO pick only validated data
     for num, url in enumerate(data_paths):
         if (num + 1) % 100 == 0:
             print(f'--- Already downloaded {num + 1} files out of {len(data_paths)} ---')
@@ -117,9 +118,19 @@ def download_annotated_data_from_bucket(data_paths):
             # Remove annotations which were skipped over the time
             if task_id in annotations.keys() and not json_file['task']['is_labeled']:
                 del annotations[task_id]
-            # and add only the ona which were annotated
+            # and add only the ones which were annotated
             elif json_file['task']['is_labeled'] and not json_file['was_cancelled']:
-                annotations[task_id] = json_file
+                if needs_to_be_validated:
+                    try:
+                        validation_result_obj = [obj for obj in json_file['result'] if obj['from_name'] == 'Validation']
+                        if validation_result_obj:
+                            validation_result = validation_result_obj[0]['value']['choices']
+                            if 'Validated' in validation_result:
+                                annotations[task_id] = json_file
+                    except Exception as e:
+                        logger.debug(f'Task was not annotated with an error: {e}')
+                else:
+                    annotations[task_id] = json_file
 
     return annotations
 
@@ -179,17 +190,17 @@ def download_label_studio_data(annotated_data_in_jsons):
 
 
 def get_training_data(access_token='local', needs_to_be_validated=False):
-    delete_content_of_folder('preprocess/images')
-    delete_content_of_folder('preprocess/labels')
-
-    # get legacy data
-    download_legacy_data()
+    # delete_content_of_folder('preprocess/images')
+    # delete_content_of_folder('preprocess/labels')
+    #
+    # # get legacy data
+    # download_legacy_data()
 
     # get label studio data
     urls = get_postgres_data_urls(access_token)
-    annotated_data_in_jsons = download_annotated_data_from_bucket(data_paths=urls)
+    annotated_data_in_jsons = download_annotated_data_from_bucket(urls, needs_to_be_validated)
     download_label_studio_data(annotated_data_in_jsons)
 
 
 if __name__ == '__main__':
-    get_training_data()
+    get_training_data(needs_to_be_validated=True)
