@@ -52,7 +52,7 @@ def json_to_yolo(input_json, annotation_name):
                 pass
 
 
-def delete_content_of_folder(path_to_folder):
+def delete_content_of_folder(path_to_folder:str) -> None:
     for filename in os.listdir(path_to_folder):
         try:
             file_path = os.path.join(path_to_folder, filename)
@@ -64,7 +64,7 @@ def delete_content_of_folder(path_to_folder):
             print('Failed to delete %s. Reason: %s' % (file_path, e))
 
 
-def get_postgres_data_urls(access_token='local'):
+def get_postgres_data_urls(access_token:str = 'local', specific_org:str = '') -> list:
     # Initialization of output
     data_urls = []
     # Right now only for production
@@ -82,19 +82,22 @@ def get_postgres_data_urls(access_token='local'):
 
             if not 200 <= response.status_code < 300:
                 logger.info(f"Data not downloaded with an error: {response}")
+            elif specific_org:
+                data_urls = [ps["annotation_url"] for ps in response.json()
+                             if (ps['annotation_type'] == 'vision' and ps['org_id'] == specific_org)]
             else:
                 data_urls = [ps["annotation_url"] for ps in response.json() if ps['annotation_type'] == 'vision']
     return data_urls
 
 
-def decode_gcs_url(url):
+def decode_gcs_url(url:str):
     p = urlparse(url)
     path = p.path[1:].split('/', 1)
     bucket, file_path = path[0], path[1]
     return bucket, file_path
 
 
-def download_blob(url):
+def download_blob(url:str) -> dict:
     annotation = {}
     if url:
         storage_client = storage.Client()
@@ -135,7 +138,7 @@ def download_annotated_data_from_bucket(data_paths, needs_to_be_validated):
     return annotations
 
 
-def download_legacy_data():
+def download_legacy_data(specific_org:str = '') -> None:
     # Instantiates a client
     storage_client = storage.Client()
 
@@ -143,7 +146,11 @@ def download_legacy_data():
     bucket = storage_client.get_bucket('ga_vision_images')
 
     # Get blobs in specific subdirectory
-    blobs_specific = list(bucket.list_blobs(prefix='legacy/'))
+    if specific_org:
+        blobs_specific = list(bucket.list_blobs(prefix='legacy/' + specific_org))
+    else:
+        blobs_specific = list(bucket.list_blobs(prefix='legacy/'))
+
     for num, blob in enumerate(blobs_specific):
         try:
             if (num + 1) % 100 == 0:
@@ -156,7 +163,11 @@ def download_legacy_data():
     bucket = storage_client.get_bucket('ga_vision_annotations')
 
     # Get blobs in specific subdirectory
-    blobs_specific = list(bucket.list_blobs(prefix='legacy/'))
+    if specific_org:
+        blobs_specific = list(bucket.list_blobs(prefix='legacy/' + specific_org))
+    else:
+        blobs_specific = list(bucket.list_blobs(prefix='legacy/'))
+
     for num, blob in enumerate(blobs_specific):
         try:
             if (num + 1) % 100 == 0:
@@ -189,18 +200,19 @@ def download_label_studio_data(annotated_data_in_jsons):
             print(f'--- Failed to download {image_name} with {e} ---')
 
 
-def get_training_data(access_token='local', needs_to_be_validated=False):
+def get_training_data(access_token:str = 'local', needs_to_be_validated:bool = False, specific_org:str = '') -> None:
     delete_content_of_folder('preprocess/images')
     delete_content_of_folder('preprocess/labels')
 
     # get legacy data
-    download_legacy_data()
+    download_legacy_data(specific_org)
 
     # get label studio data
-    urls = get_postgres_data_urls(access_token)
+    urls = get_postgres_data_urls(access_token, specific_org)
     annotated_data_in_jsons = download_annotated_data_from_bucket(urls, needs_to_be_validated)
     download_label_studio_data(annotated_data_in_jsons)
 
 
 if __name__ == '__main__':
     get_training_data(needs_to_be_validated=True)
+    # get_training_data(needs_to_be_validated=False, specific_org='fritzschur')
