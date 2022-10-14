@@ -129,6 +129,10 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         dt[1] += t3 - t2
 
         # NMS
+        # TODO Modified by GoAuto
+        pred = pred.cpu()
+        pred = pred.to(torch.float64)
+        # TODO up to here
         pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
         dt[2] += time_sync() - t3
 

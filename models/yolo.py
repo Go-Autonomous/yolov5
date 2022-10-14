@@ -65,6 +65,11 @@ class Detect(nn.Module):
                 else:  # for YOLOv5 on AWS Inferentia https://github.com/ultralytics/yolov5/pull/2953
                     xy = (y[..., 0:2] * 2 - 0.5 + self.grid[i]) * self.stride[i]  # xy
                     wh = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
+                    # TODO modified by us
+                    if y.dtype == torch.float16:
+                        xy = xy.half()
+                        wh = wh.half()
+                    # TODO up to here
                     y = torch.cat((xy, wh, y[..., 4:]), -1)
                 z.append(y.view(bs, -1, self.no))
 
