@@ -5,7 +5,6 @@ import shutil
 from google.cloud import storage
 from urllib.parse import urlparse
 from loguru import logger
-from settings import settings
 
 
 label_dictionary = {
@@ -66,32 +65,6 @@ def delete_content_of_folder(path_to_folder: str) -> None:
             print('Failed to delete %s. Reason: %s' % (file_path, e))
 
 
-def get_postgres_data_urls(access_token: str = 'local', specific_org: str = '') -> list:
-    # Initialization of output
-    data_urls = []
-    # Right now only for production
-    if settings.ENVIRONMENT == 'production':
-        with httpx.Client() as client:
-            if access_token == 'local':
-                access_token_credentials = settings.SAGA_TOKEN
-            else:
-                access_token_credentials = access_token.credentials
-
-            # *** GET DATA FROM DATABASE ***
-            url = f"{settings.POSTGREST_URL}/content_annotation"
-            headers = {"Authorization": f"Bearer {access_token_credentials}", "Accept-Profile": "bc"}
-            response = client.get(url, headers=headers)
-
-            if not 200 <= response.status_code < 300:
-                logger.info(f"Data not downloaded with an error: {response}")
-            elif specific_org:
-                data_urls = [ps["annotation_url"] for ps in response.json()
-                             if (ps['annotation_type'] == 'vision' and ps['org_id'] == specific_org.lower())]
-            else:
-                data_urls = [ps["annotation_url"] for ps in response.json() if ps['annotation_type'] == 'vision']
-    return data_urls
-
-
 def decode_gcs_url(url: str):
     p = urlparse(url)
     path = p.path[1:].split('/', 1)
@@ -113,7 +86,6 @@ def download_blob(url: str) -> dict:
 
 def download_annotated_data_from_bucket(data_paths, needs_to_be_validated):
     annotations = {}
-    # TODO pick only validated data
     for num, url in enumerate(data_paths):
         if (num + 1) % 100 == 0:
             print(f'--- Already downloaded {num + 1} files out of {len(data_paths)} ---')
@@ -170,7 +142,7 @@ def get_bucket_data_urls(specific_org: str = ''):
     return [blob.public_url for blob in folder_in_bucket if blob.name != 'Stark/']
 
 
-def get_training_data(access_token: str = 'local', needs_to_be_validated: bool = False, specific_org: str = '') -> None:
+def get_training_data(needs_to_be_validated: bool = False, specific_org: str = '') -> None:
     delete_content_of_folder('preprocess_stark/images')
     delete_content_of_folder('preprocess_stark/labels')
 

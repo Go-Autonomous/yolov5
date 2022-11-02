@@ -111,7 +111,6 @@ def download_blob(url:str) -> dict:
 
 def download_annotated_data_from_bucket(data_paths, needs_to_be_validated):
     annotations = {}
-    # TODO pick only validated data
     for num, url in enumerate(data_paths):
         if (num + 1) % 100 == 0:
             print(f'--- Already downloaded {num + 1} files out of {len(data_paths)} ---')
