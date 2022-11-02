@@ -25,10 +25,10 @@ def delete_inside(folder: str):
             print('Failed to delete %s. Reason: %s' % (file_path, e))
 
 
-def copy_files_to_final_destination(src_path, dest_path):
-
-    delete_inside(os.path.join(dest_path, 'images'))
-    delete_inside(os.path.join(dest_path, 'labels'))
+def copy_files_to_final_destination(src_path, dest_path, delete_content=True):
+    if delete_content:
+        delete_inside(os.path.join(dest_path, 'images'))
+        delete_inside(os.path.join(dest_path, 'labels'))
 
     missing_counter = 0
     for filename in os.listdir(os.path.join(src_path, 'images')):
