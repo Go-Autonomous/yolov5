@@ -44,6 +44,28 @@ def copy_files_to_final_destination(src_path, dest_path, delete_content=True):
     logger.debug(f"Number of unlabelled images: {missing_counter}")
 
 
+def copy_files_to_final_destination_and_scale(src_path, dest_path, scale_factor=1, delete_content=True):
+    if delete_content:
+        delete_inside(os.path.join(dest_path, 'images'))
+        delete_inside(os.path.join(dest_path, 'labels'))
+
+    missing_counter = 0
+    for filename in os.listdir(os.path.join(src_path, 'images')):
+        img_extension = '.png' if '.png' in filename else '.jpeg'
+        image_path = os.path.join(src_path + '/images', filename)
+        label_path = os.path.join(src_path + '/labels', filename.replace(img_extension, '.txt'))
+        for i in range(scale_factor):
+            try:
+                shutil.copy(image_path, os.path.join(os.path.join(dest_path, 'images'),
+                                                     filename.replace(img_extension, f'_{i}{img_extension}')))
+                shutil.copy(label_path, os.path.join(os.path.join(dest_path, 'labels'),
+                                                     filename.replace(img_extension, f'_{i}.txt')))
+            except:
+                missing_counter += 1
+
+    logger.debug(f"Number of unlabelled images: {missing_counter}")
+
+
 def find_missing_labels(dir_images, dir_labels):
     """
     Method to find missing labels. In case some image miss labels, delete this image.

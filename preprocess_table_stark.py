@@ -1,6 +1,11 @@
 import split
-from preprocess_utils import copy_files_to_final_destination, find_missing_labels, subset_labels
 from pathlib import Path
+from preprocess_utils import (
+    copy_files_to_final_destination,
+    find_missing_labels,
+    subset_labels,
+    copy_files_to_final_destination_and_scale
+)
 
 
 label2id = {
@@ -25,8 +30,12 @@ def main():
     (created_data_path / "images").mkdir(exist_ok=True, parents=True)
     (created_data_path / "labels").mkdir(exist_ok=True, parents=True)
 
-    copy_files_to_final_destination(src_path="preprocess_stark", dest_path="datasets_stark/created_data_table")
-    copy_files_to_final_destination(src_path="preprocess", dest_path="datasets_stark/created_data_table", delete_content=False)
+    copy_files_to_final_destination_and_scale(src_path="preprocess_stark",
+                                              dest_path="datasets_stark/created_data_table",
+                                              scale_factor=3)
+    copy_files_to_final_destination(src_path="preprocess",
+                                    dest_path="datasets_stark/created_data_table",
+                                    delete_content=False)
     subset_labels(
         labels_path="datasets_stark/created_data_table/labels",
         label_id=label2id,
