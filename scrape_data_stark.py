@@ -153,4 +153,4 @@ def get_training_data(needs_to_be_validated: bool = False, specific_org: str = '
 
 
 if __name__ == '__main__':
-    get_training_data(needs_to_be_validated=False, specific_org='Stark')
+    get_training_data(needs_to_be_validated=True, specific_org='Stark')
