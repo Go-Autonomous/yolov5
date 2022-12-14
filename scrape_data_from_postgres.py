@@ -116,28 +116,29 @@ def download_annotated_data_from_bucket(data_paths, needs_to_be_validated):
             print(f'--- Already downloaded {num + 1} files out of {len(data_paths)} ---')
         json_file = download_blob(url)
         if json_file:
-            task_id = json_file['task']['id']
-            # Remove annotations which were skipped over the time
-            if task_id in annotations.keys() and not json_file['task']['is_labeled']:
-                del annotations[task_id]
-            # and add only the ones which were annotated
-            elif json_file['task']['is_labeled'] and not json_file['was_cancelled']:
-                if needs_to_be_validated:
-                    try:
-                        validation_result_obj = [obj for obj in json_file['result'] if obj['from_name'] == 'Validation']
-                        if validation_result_obj:
-                            validation_result = validation_result_obj[0]['value']['choices']
-                            if 'Validated' in validation_result:
-                                annotations[task_id] = json_file
-                    except Exception as e:
-                        logger.debug(f'Task was not annotated with an error: {e}')
-                else:
-                    annotations[task_id] = json_file
+            try:
+                task_id = json_file['task']['id']
+                nature_of_annotation = [obj['value']['choices'][0] for obj in json_file['result']
+                                        if obj['from_name'] == 'Validation']
+
+                # Remove annotations which were skipped over the time
+                if task_id in annotations.keys() and not json_file['task']['is_labeled']:
+                    del annotations[task_id]
+                # and add only the ones which were annotated and wasn't deleted
+                elif (json_file['task']['is_labeled'] and not json_file['was_cancelled']
+                      and 'Deleted' not in nature_of_annotation):
+                    if needs_to_be_validated:
+                        if 'Validated' in nature_of_annotation:
+                            annotations[task_id] = json_file
+                    else:
+                        annotations[task_id] = json_file
+            except Exception as e:
+                logger.info(f'Annotation was not downloaded from gcp with an error: {e}')
 
     return annotations
 
 
-def download_legacy_data(specific_org:str = '') -> None:
+def download_legacy_data(specific_org: str = '') -> None:
     # Instantiates a client
     storage_client = storage.Client()
 
@@ -199,7 +200,7 @@ def download_label_studio_data(annotated_data_in_jsons):
             print(f'--- Failed to download {image_name} with {e} ---')
 
 
-def get_training_data(access_token:str = 'local', needs_to_be_validated:bool = False, specific_org:str = '') -> None:
+def get_training_data(access_token: str = 'local', needs_to_be_validated: bool = False, specific_org: str = '') -> None:
     delete_content_of_folder('preprocess/images')
     delete_content_of_folder('preprocess/labels')
 
