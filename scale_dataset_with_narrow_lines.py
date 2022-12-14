@@ -2,6 +2,7 @@ import os
 import numpy as np
 import shutil
 
+
 def delete_inside(folder: str):
     """
     Function to delete all files inside folder.
@@ -18,6 +19,7 @@ def delete_inside(folder: str):
                 shutil.rmtree(file_path)
         except Exception as e:
             print('Failed to delete %s. Reason: %s' % (file_path, e))
+
 
 def main():
     counter = 0
@@ -52,7 +54,6 @@ def main():
                 except:
                     shutil.copy(os.path.join(images_folder, filename.replace('.txt', '.png')),
                                 os.path.join(images_save, filename.replace('.txt', f'_{counter}.png')))
-
 
         for count in line_counts:
             if len(heights_of_lines) > count and np.mean(heights_of_lines) < 0.1:
